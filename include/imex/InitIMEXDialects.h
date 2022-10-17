@@ -20,6 +20,7 @@
 
 #include <imex/Dialect/Dist/IR/DistOps.h>
 #include <imex/Dialect/PTensor/IR/PTensorOps.h>
+#include <imex/Dialect/kgen/IR/kgenOps.h>
 
 namespace imex {
 
