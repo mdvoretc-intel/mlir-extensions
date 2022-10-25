@@ -1,88 +1,133 @@
-#Copyright 2022 The TensorFlow Authors.All Rights Reserved.
+# Copyright 2022 The TensorFlow Authors. All Rights Reserved.
 #
-#Licensed under the Apache License, Version 2.0(the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#https: // www.apache.org/licenses/LICENSE-2.0
+#      https://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
-include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR} ${
-    CMAKE_CURRENT_SOURCE_DIR})
+include_directories(BEFORE
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR})
 
-    set(LLVM_OPTIONAL_SOURCES bufferizable_op_interface_impl.cc)
+set(LLVM_OPTIONAL_SOURCES
+  bufferizable_op_interface_impl.cc
+)
 
-        add_mlir_dialect_library(GmlStTilingInterface tiling_interface.cc
+add_mlir_dialect_library(GmlStTilingInterface
+  tiling_interface.cc
 
-                                     LINK_LIBS PUBLIC MLIRIR MLIRSupport
+  LINK_LIBS PUBLIC
+  MLIRIR
+  MLIRSupport
 
-                                         DEPENDS MLIRGmlStTilingInterfaceIncGen)
+  DEPENDS
+  MLIRGmlStTilingInterfaceIncGen
+)
 
-            add_mlir_dialect_library(
-                GmlStTilingInterfaceImpl tiling_interface_impl.cc
+add_mlir_dialect_library(GmlStTilingInterfaceImpl
+  tiling_interface_impl.cc
 
-                    LINK_LIBS PUBLIC GmlStDialect GmlStTilingInterface
-                        MLIRArithDialect MLIRAffineDialect
-                            MLIRDestinationStyleOpInterface MLIRLinalgDialect
-                                MLIRLinalgTransforms MLIRLinalgUtils
-                                    MLIRTensorDialect MLIRTensorUtils MLIRIR
-                                        MLIRSupport)
+  LINK_LIBS PUBLIC
+  GmlStDialect
+  GmlStTilingInterface
+  MLIRArithDialect
+  MLIRAffineDialect
+  MLIRDestinationStyleOpInterface
+  MLIRLinalgDialect
+  MLIRLinalgTransforms
+  MLIRLinalgUtils
+  MLIRTensorDialect
+  MLIRTensorUtils
+  MLIRIR
+  MLIRSupport
+)
 
-                add_mlir_dialect_library(
-                    GmlStBufferizableOpInterface bufferizable_op_interface_impl
-                        .cc
+add_mlir_dialect_library(GmlStBufferizableOpInterface
+  bufferizable_op_interface_impl.cc
 
-                            LINK_LIBS PUBLIC GmlStDialect
-                                MLIRBufferizationDialect
-                                    MLIRBufferizationTransforms
-                                        MLIRDestinationStyleOpInterface MLIRIR
-                                            MLIRSupport)
+  LINK_LIBS PUBLIC
+  GmlStDialect
+  MLIRBufferizationDialect
+  MLIRBufferizationTransforms
+  MLIRDestinationStyleOpInterface
+  MLIRIR
+  MLIRSupport
+)
 
-                    add_mlir_dialect_library(
-                        GmlStPasses bufferize_tiled_loop
-                            .cc collapse_materialize_ops.cc fusion
-                            .cc gml_st_to_scf.cc gml_st_to_gpu
-                            .cc gml_st_to_gpu_2d.cc linalg_utils.cc tiling
-                            .cc tiling_cwise.cc tiling_cwise_gpu_warps
-                            .cc tiling_reduction.cc tiling_softmax
-                            .cc transform_matmul_for_cpu
-                            .cc transform_scatter_for_cpu.cc vectorization.cc
+add_mlir_dialect_library(GmlStPasses
+  bufferize_tiled_loop.cc
+  collapse_materialize_ops.cc
+  fusion.cc
+  gml_st_to_scf.cc
+  gml_st_to_gpu.cc
+  gml_st_to_gpu_2d.cc
+  linalg_utils.cc
+  tiling.cc
+  tiling_cwise.cc
+  tiling_cwise_gpu_warps.cc
+  tiling_reduction.cc
+  tiling_softmax.cc
+  transform_matmul_for_cpu.cc
+  transform_scatter_for_cpu.cc
+  vectorization.cc
 
-                                DEPENDS MLIRGmlStPassIncGen
+  DEPENDS
+  MLIRGmlStPassIncGen
 
-                                    LINK_COMPONENTS Core
+  LINK_COMPONENTS
+  Core
 
-                                        LINK_LIBS PUBLIC GmlStTilingInterface GmlStTilingInterfaceImpl
-                                            MLIRDestinationStyleOpInterface MLIRDialectUtils
-                                                MLIRAffineDialect MLIRArithDialect
-                                                    MLIRFuncDialect MLIRGPUOps
-                                                        MLIRIR MLIRLinalgDialect
-                                                            MLIRLinalgTransforms
-                                                                MLIRPass MLIRSupport
-                                                                    MLIRVectorDialect)
+  LINK_LIBS PUBLIC
+  GmlStTilingInterface
+  GmlStTilingInterfaceImpl
+  MLIRDestinationStyleOpInterface
+  MLIRDialectUtils
+  MLIRAffineDialect
+  MLIRArithDialect
+  MLIRFuncDialect
+  MLIRGPUOps
+  MLIRIR
+  MLIRLinalgDialect
+  MLIRLinalgTransforms
+  MLIRPass
+  MLIRSupport
+  MLIRVectorDialect
+)
 
-                        add_mlir_dialect_library(
-                            GmlStTransforms transforms.cc
+add_mlir_dialect_library(GmlStTransforms
+  transforms.cc
 
-                                LINK_COMPONENTS Core
+  LINK_COMPONENTS
+  Core
 
-                                    LINK_LIBS PUBLIC GmlStDialect
-                                        MLIRAffineDialect MLIRDialectUtils
-                                            MLIRIR MLIRSCFUtils)
+  LINK_LIBS PUBLIC
+  GmlStDialect
+  MLIRAffineDialect
+  MLIRDialectUtils
+  MLIRIR
+  MLIRSCFUtils
+)
 
-                            add_mlir_dialect_library(
-                                GmlStTestPasses test_passes.cc
+add_mlir_dialect_library(GmlStTestPasses
+  test_passes.cc
 
-                                    DEPENDS MLIRGmlStTestPassIncGen
+  DEPENDS
+  MLIRGmlStTestPassIncGen
 
-                                        LINK_COMPONENTS Core
+  LINK_COMPONENTS
+  Core
 
-                                            LINK_LIBS PUBLIC
-                                                GmlStBufferizableOpInterface
-                                                    GmlStDialect GmlStTransforms
-                                                        MLIRPass MLIRTransforms)
+  LINK_LIBS PUBLIC
+  GmlStBufferizableOpInterface
+  GmlStDialect
+  GmlStTransforms
+  MLIRPass
+  MLIRTransforms
+)
