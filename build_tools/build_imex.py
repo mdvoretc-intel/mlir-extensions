@@ -182,7 +182,7 @@ def _build_llvm(
 
     try:
         # Build
-        cmake_build_args = cmake_exec + ["--build", ".", "--", "-j4"]
+        cmake_build_args = cmake_exec + ["--build", "."]
         subprocess.check_call(
             cmake_build_args, shell=False, cwd=llvm_build_dir, env=os.environ
         )

@@ -116,11 +116,7 @@ static void rewriteAffineOpAfterPeeling(RewriterBase &rewriter, LoopOp mainLoop,
   });
 }
 
-bool isZero(Value v) {
-  if (auto cst = v.getDefiningOp<arith::ConstantIndexOp>())
-    return cst.value() == 0;
-  return false;
-}
+bool isZero(Value v) { return matchPattern(v, m_Zero()); }
 using ::mlir::linalg::LinalgOp;
 
 void generateLoopNest(OpBuilder &b, Location loc, ArrayRef<Range> loopRanges,
@@ -146,8 +142,8 @@ void generateLoopNest(OpBuilder &b, Location loc, ArrayRef<Range> loopRanges,
     nestedBuilder.create<gml_st::YieldOp>(nestedLoc, results);
   };
 
-  SmallVector<Value> inputOperands = linalgOp.getInputOperands();
-  SmallVector<Value> outputOperands = linalgOp.getOutputOperands();
+  SmallVector<Value> inputs{linalgOp.getInputOperands()};
+  SmallVector<Value> outputs{linalgOp.getOutputOperands()};
 
   SmallVector<Value> lbsValue =
       mlir::getValueOrCreateConstantIndexOp(b, loc, lbs);
@@ -155,9 +151,9 @@ void generateLoopNest(OpBuilder &b, Location loc, ArrayRef<Range> loopRanges,
       mlir::getValueOrCreateConstantIndexOp(b, loc, ubs);
   SmallVector<Value> stepsValue =
       mlir::getValueOrCreateConstantIndexOp(b, loc, steps);
-  auto tiledLoop = b.create<LoopOp>(
-      loc, lbsValue, ubsValue, stepsValue, inputOperands, outputOperands,
-      b.getArrayAttr(iteratorTypes), wrappedBuilderFn);
+  auto tiledLoop =
+      b.create<LoopOp>(loc, lbsValue, ubsValue, stepsValue, inputs, outputs,
+                       b.getArrayAttr(iteratorTypes), wrappedBuilderFn);
   if (!distributionTypes.empty())
     tiledLoop.setDistributionTypes(b, distributionTypes);
 }
@@ -222,8 +218,7 @@ tileLinalgOpImpl(RewriterBase &b, LinalgOp op, ValueRange tileSizes,
 
     // Tile the `operandValuesToUse` that either match the `op` operands
     // themselves or the tile loop arguments forwarding them.
-    assert(operandValuesToUse.size() ==
-               static_cast<size_t>(op->getNumOperands()) &&
+    assert(operandValuesToUse.size() == op->getNumOperands() &&
            "expect the number of operands and inputs and outputs to match");
     SmallVector<Value> valuesToTile = operandValuesToUse;
     auto sizeBounds = makeComposedFoldedMultiResultAffineApply(
@@ -234,13 +229,7 @@ tileLinalgOpImpl(RewriterBase &b, LinalgOp op, ValueRange tileSizes,
         /*omitPartialTileCheck=*/false);
 
     SmallVector<Type, 4> resultTensorTypes;
-    SmallVector<OpOperand *> outputTensorOperands0;
-    for (OpOperand *operand : op.getOutputOperands()) {
-      Type type = operand->get().getType();
-      if (type.isa<RankedTensorType>())
-        outputTensorOperands0.push_back(operand);
-    }
-    for (OpOperand *opOperand : outputTensorOperands0)
+    for (OpOperand *opOperand : op.getOutputOperands())
       resultTensorTypes.push_back(
           tiledOperands[opOperand->getOperandNumber()].getType());
 
@@ -248,13 +237,7 @@ tileLinalgOpImpl(RewriterBase &b, LinalgOp op, ValueRange tileSizes,
 
     // Insert a insert_slice for each output tensor.
     unsigned resultIdx = 0;
-    SmallVector<OpOperand *> outputTensorOperands1;
-    for (OpOperand *operand : op.getOutputOperands()) {
-      Type type = operand->get().getType();
-      if (type.isa<RankedTensorType>())
-        outputTensorOperands1.push_back(operand);
-    }
-    for (OpOperand *opOperand : outputTensorOperands1) {
+    for (OpOperand *opOperand : op.getOutputOperands()) {
       Value outputTensor = tiledOperands[opOperand->getOperandNumber()];
       IRRewriter rewriter(b);
       if (auto sliceOp = outputTensor.getDefiningOp<tensor::ExtractSliceOp>()) {

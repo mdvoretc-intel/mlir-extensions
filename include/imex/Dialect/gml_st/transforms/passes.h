@@ -39,18 +39,23 @@ createFusionPass(StringRef producer = "", StringRef consumer = "");
 
 /// Pass to tile and fuse all cwise ops.
 std::unique_ptr<OperationPass<func::FuncOp>>
-createTilingCwisePass(bool distribute, ArrayRef<int64_t> tileSizes);
+createTilingCwisePass(bool distribute, ArrayRef<int64_t> tileSizes,
+                      StringRef distributionLabel = "");
 std::unique_ptr<OperationPass<func::FuncOp>> createTilingCwisePass();
 
 /// Pass to tile a linalg.generic reduction.
 std::unique_ptr<OperationPass<func::FuncOp>> createTilingReductionPass();
 
-/// Pass to compose set operations.
-std::unique_ptr<OperationPass<func::FuncOp>> createComposeSetOpsPass();
+/// Pass to tile a linalg.generic reduction for GPU on the warp level.
+std::unique_ptr<OperationPass<func::FuncOp>> createTilingCwiseGPUWarpsPass();
+
+/// Pass to match, tile, and fuse softmax implementations.
+std::unique_ptr<OperationPass<func::FuncOp>>
+createTilingSoftmaxPass(bool distribute, ArrayRef<int64_t> tileSizes);
+std::unique_ptr<OperationPass<func::FuncOp>> createTilingSoftmaxPass();
 
 /// Pass to collapse (or uncollapse) materialize operations.
-std::unique_ptr<OperationPass<func::FuncOp>>
-createCollapseMaterializeOpsPass(bool reverse = false);
+std::unique_ptr<OperationPass<func::FuncOp>> createCollapseMaterializeOpsPass();
 
 /// Create a pass to convert `gml_st.loop` to `scf.for` and `scf.parallel`
 /// loops and memref.load/memref.store accesses.
@@ -63,10 +68,15 @@ std::unique_ptr<OperationPass<func::FuncOp>> CreateTiledLoopBufferizePass();
 /// Pass to vectorize linalg.generic ops tiled to gml_st.parallel and gml_st.for
 /// loops.
 std::unique_ptr<OperationPass<func::FuncOp>>
-createVectorizeGmlStLoopsPass(bool vectorizeGmlStOps = false);
+createVectorizeGmlStLoopsPass(bool vectorizeGmlStOps = false,
+                              ArrayRef<StringRef> distributionLabels = {});
 
-std::unique_ptr<OperationPass<func::FuncOp>> createGmlStToGpuPass();
-std::unique_ptr<OperationPass<func::FuncOp>> createGmlStToGpu2dPass();
+/// Pass to transform a thlo.scatter op for CPU backend.
+std::unique_ptr<OperationPass<func::FuncOp>> createTransformScatterForCpuPass();
+
+/// Pass to transform a linalg.matmul op for CPU backend.
+std::unique_ptr<OperationPass<func::FuncOp>>
+createTransformMatmulForCpuPass(ArrayRef<int64_t> tileSizes = llvm::None);
 
 #define GEN_PASS_REGISTRATION
 #include "imex/Dialect/gml_st/transforms/passes.h.inc"

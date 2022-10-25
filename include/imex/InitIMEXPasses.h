@@ -17,9 +17,9 @@
 
 #include <imex/Conversion/Passes.h>
 // #include <imex/Transforms/IMEXPasses.h>
-#include <imex/Dialect/PTensor/Transforms/Passes.h>
-// #include <imex/Dialect/*/Transforms/Passes.h>
 #include "imex/Transforms/Passes.h"
+#include <imex/Dialect/PTensor/Transforms/Passes.h>
+#include <imex/Dialect/gml_st/transforms/passes.h>
 
 #include <cstdlib>
 
@@ -41,7 +41,7 @@ inline void registerAllPasses() {
 
   // Dialect passes
   registerPTensorPasses();
-  // register*Passes();
+  ::mlir::gml_st::registerGmlStPasses();
 
   // Dialect pipelines
 }

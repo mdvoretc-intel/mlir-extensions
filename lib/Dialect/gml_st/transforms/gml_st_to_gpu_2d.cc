@@ -221,8 +221,3 @@ ParallelOpToGpu2dPattern::matchAndRewrite(ParallelOp root,
   rewriter.eraseOp(root);
   return success();
 }
-
-std::unique_ptr<OperationPass<func::FuncOp>>
-mlir::gml_st::createGmlStToGpu2dPass() {
-  return std::make_unique<GmlStToGpu2dPass>();
-}

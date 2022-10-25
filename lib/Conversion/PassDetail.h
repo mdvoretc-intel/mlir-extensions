@@ -79,6 +79,10 @@ namespace gpux {
 class GPUXDialect;
 } // namespace gpux
 
+namespace gml_st {
+class GmlSt_Dialect;
+} // namespace gml_st
+
 #define GEN_PASS_CLASSES
 #include <imex/Conversion/Passes.h.inc>
 

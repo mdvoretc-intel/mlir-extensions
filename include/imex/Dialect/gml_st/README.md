@@ -1,4 +1,4 @@
-# Google ML Structured Dialect
+#Google ML Structured Dialect
 
 The `gml_st` dialect will contain a loop-like construct and subset operations
 that should allow support for fusion beyond rectangular tiles. This is necessary
@@ -75,23 +75,32 @@ cases can only be done via `TilingInterface`
           ins (%in_ = %in: tensor<80x60xf32>, %cst_ = %cst: f32)
           outs (%out_ = %out: tensor<80xf32>)
           iterators["parallel", "reduction"] {
-  %in_sub = tensor.extract_slice %in_[%i, %j] [4, 4] [1, 1]
-      : tensor<80x60xf32> to tensor<4x4xf32>
-  %out_sub = tensor.extract_slice %out_[%i] [4] [1]
-      : tensor<80xf32> to tensor<4xf32>
-  %reduction = linalg.generic {
-      indexing_maps = [affine_map<(d0, d1) -> (d0, d1)>,
-                       affine_map<(d0, d1) -> (d0)>],
-      iterator_types = ["parallel", "reduction"]}
-      ins(%in_sub : tensor<4x4xf32>)
-      outs(%out_sub : tensor<4xf32>) {
-    ^bb0(%a: f32, %b: f32):
-      %0 = arith.addf %a, %b : f32
-      linalg.yield %0 : f32
-  } -> tensor<4xf32>
-  %update = tensor.insert_slice %reduction into %out_[%i] [4] [1]
-      : tensor<4xf32> into tensor<80xf32>
-  linalg.yield %update : tensor<80xf32>
+  % in_sub = tensor.extract_slice %
+             in_[% i, % j][4, 4][1, 1] : tensor<80x60xf32> to tensor<4x4xf32> %
+                                         out_sub =
+                 tensor.extract_slice %
+                 out_[% i][4][1] : tensor<80xf32> to tensor<4xf32> % reduction =
+                     linalg.generic{
+                         indexing_maps =
+                             [
+                               affine_map<(d0, d1)->(d0, d1)>,
+                               affine_map<(d0, d1)->(d0)>
+                             ],
+                         iterator_types =
+                             [ "parallel", "reduction" ]} ins(% in_sub
+                                                              : tensor<4x4xf32>)
+                         outs(% out_sub
+                              : tensor<4xf32>) {
+    ^bb0(% a
+         : f32, % b
+         : f32)
+        : %
+        0 = arith.addf % a,
+        % b : f32 linalg.yield % 0 : f32
+    } -> tensor<4xf32> % update =
+        tensor.insert_slice % reduction into %
+        out_[% i][4][1] : tensor<4xf32> into tensor<80xf32> linalg.yield %
+        update : tensor<80xf32>
 }
 ```
 
@@ -137,27 +146,37 @@ subset.
            ins (%in_ = %in: tensor<80x60xf32>, %cst_ = %cst: f32)
            outs (%out_ = %out: tensor<80xf32>)
            iterators["parallel", "sequential"] {
-  %in_tile = gml_st.tile %in_[%i, %j] [4, 4] [1, 1]
-      : tensor<80x60xf32> to !gml_st.subset<4x4xf32>
-  %out_tile = gml_st.tile %out_[%i] [4] [1]
-      : tensor<80xf32> to !gml_st.subset<4xf32>
+  % in_tile =
+      gml_st.tile %
+      in_[% i, % j][4, 4][1, 1] : tensor<80x60xf32> to !gml_st.subset<4x4xf32> %
+      out_tile =
+          gml_st.tile %
+          out_[% i][4][1] : tensor<80xf32> to !gml_st.subset<4xf32>
 
-  %in_sub = gml_st.materialize %in_tile
-      : !gml_st.subset<4x4xf32> to tensor<4x4xf32>
-  %out_sub = gml_st.materialize %in_tile
-      : !gml_st.subset<4xf32> to tensor<4xf32>
-  %reduction = linalg.generic {
-      indexing_maps = [affine_map<(d0, d1) -> (d0, d1)>,
-                       affine_map<(d0, d1) -> (d0)>],
-      iterator_types = ["parallel", "reduction"]}
-      ins(%in_sub : tensor<4x4xf32>)
-      outs(%out_sub : tensor<4xf32>) {
-    ^bb0(%a: f32, %b: f32):
-      %0 = arith.addf %a, %b : f32
-      linalg.yield %0 : f32
-  } -> tensor<4xf32>
-  gml_st.yield %reduction to %out_tile
-      : tensor<4xf32> to !gml_st.subset<4xf32>
+          % in_sub =
+              gml_st.materialize %
+              in_tile : !gml_st.subset<4x4xf32> to tensor<4x4xf32> % out_sub =
+                  gml_st.materialize %
+                  in_tile : !gml_st.subset<4xf32> to tensor<4xf32> % reduction =
+                      linalg.generic{indexing_maps =
+                                         [
+                                           affine_map<(d0, d1)->(d0, d1)>,
+                                           affine_map<(d0, d1)->(d0)>
+                                         ],
+                                     iterator_types =
+                                         [ "parallel",
+                                           "reduction" ]} ins(% in_sub
+                                                              : tensor<4x4xf32>)
+                          outs(% out_sub
+                               : tensor<4xf32>) {
+    ^bb0(% a
+         : f32, % b
+         : f32)
+        : %
+        0 = arith.addf % a,
+        % b : f32 linalg.yield % 0 : f32
+    } -> tensor<4xf32> gml_st.yield % reduction to %
+        out_tile : tensor<4xf32> to !gml_st.subset<4xf32>
 }
 ```
 

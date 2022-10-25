@@ -41,135 +41,21 @@ limitations under the License.
 
 namespace mlir {
 namespace gml_st {
+
+void TilingOptions::setTileSizeComputationFn(ArrayRef<int64_t> ts) {
+  SmallVector<int64_t, 4> tileSizes(ts.begin(), ts.end());
+  tileSizeComputationFn = [tileSizes](OpBuilder &b, Operation *op) {
+    return llvm::to_vector<4>(map_range(tileSizes, [&](int64_t s) {
+      Value v = b.create<arith::ConstantIndexOp>(op->getLoc(), s);
+      return v;
+    }));
+  };
+}
+
 namespace {
 
 #define GEN_PASS_DEF_TILINGPASS
 #include "imex/Dialect/gml_st/transforms/passes.h.inc"
-
-Value createTile(OpBuilder &b, Location loc, Value superset, ValueRange ivs,
-                 ValueRange upperBounds, ValueRange steps,
-                 ArrayRef<int64_t> tileSizes) {
-  // Compute the actual size of the tile.
-  ArrayRef<int64_t> supersetShape =
-      superset.getType().cast<TileType>().getShape();
-  uint64_t rank = supersetShape.size();
-  SmallVector<int64_t> staticSizes;
-  SmallVector<Value> dynamicSizes;
-  staticSizes.reserve(rank);
-  for (auto i : llvm::seq<int64_t>(0, rank)) {
-    // If the dimension is perfectly tiled, use the statically known tile size.
-    if (tileSizes[i] == 1 || (supersetShape[i] != ShapedType::kDynamicSize &&
-                              supersetShape[i] % tileSizes[i] == 0)) {
-      staticSizes.push_back(tileSizes[i]);
-      continue;
-    }
-
-    // Otherwise, compute the tile size dynamically.
-    auto remainderInDim = b.create<arith::SubIOp>(loc, upperBounds[i], ivs[i]);
-    auto tileSizeInDim =
-        b.create<arith::MinSIOp>(loc, steps[i], remainderInDim);
-    staticSizes.push_back(ShapedType::kDynamicSize);
-    dynamicSizes.push_back(tileSizeInDim);
-  }
-
-  auto tileTy = b.getType<TileType>(staticSizes);
-  auto allDynamicOffsetsAttr = b.getI64ArrayAttr(
-      SmallVector<int64_t>(rank, ShapedType::kDynamicStrideOrOffset));
-  auto staticSizesAttr = b.getI64ArrayAttr(staticSizes);
-  auto unitStridesAttr = b.getI64ArrayAttr(SmallVector<int64_t>(rank, 1));
-  return b.create<TileOp>(loc, tileTy, superset, ivs, dynamicSizes,
-                          ValueRange{}, allDynamicOffsetsAttr, staticSizesAttr,
-                          unitStridesAttr);
-}
-
-Value createNestedPloopTilingRecursively(
-    OpBuilder &b, Location loc, Value init, Value source,
-    ArrayRef<SmallVector<int64_t>> nestedTileSizes) {
-  assert(!nestedTileSizes.empty() && "expect tile sizes");
-
-  // Create root space.
-  auto sourceTy = source.getType().cast<RankedTensorType>();
-  SmallVector<Value> sourceDynamicDims =
-      tensor::createDynamicDimValues(b, loc, source);
-  auto sourceSpaceTy = b.getType<TileType>(sourceTy.getShape());
-  Value sourceSpace = b.create<SpaceOp>(loc, sourceSpaceTy, sourceDynamicDims,
-                                        b.getI64ArrayAttr(sourceTy.getShape()));
-
-  // Create loop bounds.
-  SmallVector<Value> lowerBounds(sourceTy.getRank(),
-                                 b.create<arith::ConstantIndexOp>(loc, 0));
-  SmallVector<Value> upperBounds = tensor::createDimValues(b, loc, source);
-  SmallVector<Value> steps = llvm::to_vector(
-      llvm::map_range(nestedTileSizes.front(), [&](int64_t s) -> Value {
-        return b.create<arith::ConstantIndexOp>(loc, s);
-      }));
-
-  // Create ploop.
-  auto ploop = b.create<ParallelOp>(
-      loc, sourceTy, lowerBounds, upperBounds, steps, llvm::None,
-      [&](OpBuilder &b, Location loc, ValueRange ivs) {
-        Value subset = createTile(b, loc, sourceSpace, ivs, upperBounds, steps,
-                                  nestedTileSizes.front());
-        Value innerResult = b.create<MaterializeOp>(loc, source, subset);
-
-        // Recur if there are more tile sizes, and it's not a point yet.
-        nestedTileSizes = nestedTileSizes.drop_front();
-        if (!nestedTileSizes.empty() && subset.getType().isa<TileType>()) {
-          auto materializedInitSubset =
-              b.create<MaterializeOp>(loc, init, subset);
-          innerResult = createNestedPloopTilingRecursively(
-              b, loc, materializedInitSubset, innerResult, nestedTileSizes);
-        }
-
-        b.create<SetYieldOp>(loc, ValueRange{innerResult}, ValueRange{init},
-                             ValueRange{subset});
-      });
-  return ploop.getResults().front();
-}
-
-Value createNestedPloopTiling(OpBuilder &b, Location loc, Value source,
-                              ArrayRef<SmallVector<int64_t>> &nestedTileSizes) {
-  // Create empty tensor.
-  auto sourceTy = source.getType().cast<RankedTensorType>();
-  SmallVector<Value> sourceDynamicDims =
-      tensor::createDynamicDimValues(b, loc, source);
-  auto emptyTensor = b.create<tensor::EmptyOp>(
-      loc, sourceTy.getShape(), sourceTy.getElementType(), sourceDynamicDims);
-
-  return createNestedPloopTilingRecursively(b, loc, emptyTensor, source,
-                                            nestedTileSizes);
-}
-
-// Parse comma-separated integeres as tile sizes:
-//   <tile-sizes> ::== `[` <int> ( `,` <int> )* `]`
-llvm::Optional<SmallVector<int64_t>>
-parseTileSizes(std::istringstream &istream) {
-  SmallVector<int64_t> tileSizes;
-
-  // Parse opening bracket `[`.
-  if (istream.peek() != '[')
-    return llvm::None;
-  istream.get();
-
-  // Parse leading extent.
-  int64_t value;
-  istream >> value;
-  tileSizes.push_back(value);
-
-  // Parse trailing extents.
-  while (istream.peek() == ',') {
-    istream.get();
-    istream >> value;
-    tileSizes.push_back(value);
-  }
-
-  // Parse closing bracket `]`.
-  if (istream.peek() != ']')
-    return llvm::None;
-  istream.get();
-
-  return tileSizes;
-}
 
 // Compute tile size for the tile that starts at `offset`, has size `tileSize`
 // for the tensor with the dimension size `dimSize`.
@@ -208,6 +94,7 @@ Operation *generateTileLoopNest(OpBuilder &builder, Location loc,
                                 ArrayRef<Range> loopRanges,
                                 ArrayRef<Value> tileSizeVals,
                                 ArrayRef<Value> dstOperands, bool distribute,
+                                StringRef distributionLabel,
                                 SmallVector<OpFoldResult> &offsets,
                                 SmallVector<OpFoldResult> &sizes) {
   assert(!loopRanges.empty() && "expected at least one loop range");
@@ -242,6 +129,11 @@ Operation *generateTileLoopNest(OpBuilder &builder, Location loc,
           nestedBuilder, bodyLoc, steps[index], ubs[index], iv);
     }
   };
+  Optional<StringAttr> distributionLabelAttr;
+  if (!distributionLabel.empty()) {
+    distributionLabelAttr =
+        StringAttr::get(builder.getContext(), distributionLabel);
+  }
   Operation *loop =
       distribute ? builder
                        .create<gml_st::ParallelOp>(
@@ -249,7 +141,7 @@ Operation *generateTileLoopNest(OpBuilder &builder, Location loc,
                            getValueOrCreateConstantIndexOp(builder, loc, lbs),
                            getValueOrCreateConstantIndexOp(builder, loc, ubs),
                            getValueOrCreateConstantIndexOp(builder, loc, steps),
-                           llvm::None,
+                           distributionLabelAttr,
                            [&](OpBuilder &nestedBuilder, Location bodyLoc,
                                ValueRange ivs) {
                              buildBody(nestedBuilder, bodyLoc, ivs);
@@ -279,14 +171,25 @@ struct DimOfMaterializedTilePattern : public OpRewritePattern<tensor::DimOp> {
     if (!def)
       return failure();
 
-    if (auto materializeOp = llvm::dyn_cast<MaterializeOp>(def)) {
-      Value set = materializeOp.getSet();
-      if (!set.getType().isa<TileType>())
-        return failure();
-      rewriter.replaceOpWithNewOp<gml_st::SizeOp>(op, set, op.getIndex());
-      return success();
-    }
-    return failure();
+    auto materializeOp = llvm::dyn_cast<MaterializeOp>(def);
+    if (!materializeOp)
+      return failure();
+
+    auto tileOp = materializeOp.getSet().getDefiningOp<gml_st::TileOp>();
+    if (!tileOp)
+      return failure();
+
+    Optional<int64_t> indexOr = op.getConstantIndex();
+    if (!indexOr.has_value())
+      return failure();
+
+    Value tileSizeValue =
+        tileOp.isDynamicSize(*indexOr)
+            ? tileOp.getDynamicSize(*indexOr)
+            : rewriter.create<arith::ConstantIndexOp>(
+                  op.getLoc(), tileOp.getStaticSize(*indexOr));
+    rewriter.replaceOp(op, tileSizeValue);
+    return success();
   }
 };
 
@@ -393,12 +296,7 @@ FailureOr<TilingResult> tile(const TilingOptions &options,
     OpBuilder::InsertionGuard guard(rewriter);
     tileSizeVector = options.tileSizeComputationFn(rewriter, op);
   }
-  // Implement adding accumulator to the gml_st.parallel terminator.
-  if (options.distribute) {
-    for (size_t i = 0; i < tileSizeVector.size(); ++i)
-      if (op.getLoopIteratorTypes()[i] == utils::IteratorType::reduction)
-        return failure();
-  }
+
   if (tileSizeVector.size() < iterationDomain.size()) {
     auto zero = rewriter.create<arith::ConstantIndexOp>(op.getLoc(), 0);
     tileSizeVector.append(numLoops - tileSizeVector.size(), zero);
@@ -410,7 +308,7 @@ FailureOr<TilingResult> tile(const TilingOptions &options,
   TilingResult tilingResult;
   tilingResult.loop = generateTileLoopNest(
       rewriter, op.getLoc(), iterationDomain, tileSizeVector, dstOperands,
-      options.distribute, offsets, sizes);
+      options.distribute, options.distributionLabel, offsets, sizes);
   Block *loopBody = &tilingResult.loop->getRegion(0).front();
   Operation *terminator = loopBody->getTerminator();
   rewriter.setInsertionPoint(terminator);

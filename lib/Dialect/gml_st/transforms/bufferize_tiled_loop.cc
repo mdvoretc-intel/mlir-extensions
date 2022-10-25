@@ -50,6 +50,7 @@ limitations under the License.
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/PatternMatch.h>
 #include <mlir/IR/Visitors.h>
+#include <mlir/Interfaces/DestinationStyleOpInterface.h>
 #include <mlir/Transforms/DialectConversion.h>
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
 
@@ -202,9 +203,9 @@ public:
 
 /// Create linalg op on buffers given the original tensor-based operation and
 /// the buffers for the outputs.
-linalg::DestinationStyleOpInterface
+DestinationStyleOpInterface
 createDstStyleOpOnBuffers(ConversionPatternRewriter &rewriter,
-                          linalg::DestinationStyleOpInterface dstStyleOp,
+                          DestinationStyleOpInterface dstStyleOp,
                           ValueRange inputs, ValueRange outputs) {
   SmallVector<Value, 8> newOperands = inputs;
   newOperands.append(outputs.begin(), outputs.end());
@@ -235,13 +236,12 @@ ValueRange getVariadicOperands(DenseI32ArrayAttr sizeAttr, ValueRange operands,
 
 // Bufferize DestinationStyleOpInterface in-place.
 struct BufferizeDstStyleOpInterface
-    : public OpInterfaceConversionPattern<linalg::DestinationStyleOpInterface> {
+    : public OpInterfaceConversionPattern<DestinationStyleOpInterface> {
   using OpInterfaceConversionPattern<
-      linalg::DestinationStyleOpInterface>::OpInterfaceConversionPattern;
+      DestinationStyleOpInterface>::OpInterfaceConversionPattern;
 
   LogicalResult
-  matchAndRewrite(linalg::DestinationStyleOpInterface op,
-                  ArrayRef<Value> operands,
+  matchAndRewrite(DestinationStyleOpInterface op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
     if (!op->getParentOfType<LoopOp>())
       return failure();

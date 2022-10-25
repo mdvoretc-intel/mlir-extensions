@@ -23,6 +23,7 @@ limitations under the License.
 #include <mlir/Dialect/Tensor/IR/Tensor.h>
 #include <mlir/Dialect/Tensor/Utils/Utils.h>
 #include <mlir/Dialect/Utils/StructuredOpsUtils.h>
+#include <mlir/Interfaces/DestinationStyleOpInterface.h>
 
 namespace mlir {
 namespace gml_st {
@@ -34,7 +35,7 @@ struct ExternalLinalgOpTilingInterface
           ExternalLinalgOpTilingInterface<LinalgOpTy>, LinalgOpTy> {
   /// Return the destination operands.
   SmallVector<Value> getDestinationOperands(Operation *op, OpBuilder &) const {
-    return cast<linalg::DestinationStyleOpInterface>(op).getOutputOperands();
+    return cast<DestinationStyleOpInterface>(op).getOutputOperands();
   }
 
   /// Return the loop iterator type.
@@ -71,12 +72,7 @@ struct ExternalLinalgOpTilingInterface
                                          ArrayRef<OpFoldResult> sizes) const {
     Location loc = op->getLoc();
     linalg::LinalgOp linalgOp = cast<linalg::LinalgOp>(op);
-    linalg::OpOperandVector result;
-    result.reserve(linalgOp->getNumOperands());
-    llvm::transform(linalgOp->getOpOperands(), std::back_inserter(result),
-                    [](OpOperand &opOperand) { return &opOperand; });
-    SmallVector<Value> valuesToTile =
-        result; // linalgOp.getInputAndOutputOperands();
+    OperandRange valuesToTile = linalgOp->getOperands();
     SmallVector<Optional<linalg::SliceParameters>> allSliceParams =
         linalg::computeAllSliceParameters(b, loc, linalgOp, valuesToTile,
                                           offsets, sizes, {}, true);
@@ -87,26 +83,23 @@ struct ExternalLinalgOpTilingInterface
       auto valueToTileTy = valueToTile.getType().cast<RankedTensorType>();
       const Optional<linalg::SliceParameters> &sliceParams = std::get<1>(item);
 
-      SmallVector<Value> dynamicSizes =
-          tensor::createDynamicDimValues(b, loc, valueToTile);
-      auto staticSizes = b.getI64ArrayAttr(valueToTileTy.getShape());
-      Value set = b.create<SpaceOp>(loc, dynamicSizes, staticSizes);
-      if (sliceParams.has_value()) {
-        set = b.create<TileOp>(loc, set, sliceParams->offsets,
-                               sliceParams->sizes, sliceParams->strides);
-      }
+      int64_t rank = valueToTileTy.getRank();
+      SmallVector<OpFoldResult> valueToTileSizes{
+          tensor::getMixedSizes(b, loc, valueToTile)};
+      SmallVector<OpFoldResult> zeros(rank, b.getI64IntegerAttr(0));
+      SmallVector<OpFoldResult> ones(rank, b.getI64IntegerAttr(1));
+      Value set =
+          sliceParams.has_value()
+              ? b.create<TileOp>(loc, sliceParams->offsets, sliceParams->sizes,
+                                 sliceParams->strides)
+              : b.create<TileOp>(loc, zeros, valueToTileSizes, ones);
+
       Value materializedTile = b.create<MaterializeOp>(loc, valueToTile, set);
       tiledOperands.push_back(materializedTile);
     }
 
-    SmallVector<OpOperand *> outputTensorOperands;
-    for (OpOperand *operand : linalgOp.getOutputOperands()) {
-      Type type = operand->get().getType();
-      if (type.isa<RankedTensorType>())
-        outputTensorOperands.push_back(operand);
-    }
-    SmallVector<Type> resultTensorTypes = llvm::to_vector(
-        llvm::map_range(outputTensorOperands, [&](OpOperand *opOperand) {
+    SmallVector<Type> resultTensorTypes = llvm::to_vector(llvm::map_range(
+        linalgOp.getOutputOperands(), [&](OpOperand *opOperand) {
           return tiledOperands[opOperand->getOperandNumber()].getType();
         }));
 
@@ -167,6 +160,8 @@ void registerGmlStTilingInterfaceExternalModels(DialectRegistry &registry) {
   registry.addExtension(+[](MLIRContext *ctx, linalg::LinalgDialect *) {
     linalg::GenericOp::attachInterface<
         ExternalLinalgOpTilingInterface<linalg::GenericOp>>(*ctx);
+    linalg::MatmulOp::attachInterface<
+        ExternalLinalgOpTilingInterface<linalg::MatmulOp>>(*ctx);
   });
 }
 
