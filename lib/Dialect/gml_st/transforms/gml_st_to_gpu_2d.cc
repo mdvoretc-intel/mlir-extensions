@@ -174,7 +174,7 @@ ParallelOpToGpu2dPattern::matchAndRewrite(ParallelOp root,
   //     over `parallel`'s body
   auto processParallelOp = [&](ParallelOp parallel) {
     unsigned nestingLevel = loopIterators.size();
-    unsigned inductionVarIdx = 2 * nestingLevel;
+    unsigned inductionVarIdx = 3 * nestingLevel;
     if (parallel.getNumLoops() != 2) {
       return rewriter.notifyMatchFailure(
           parallel, "should always have 2 induction variables");
