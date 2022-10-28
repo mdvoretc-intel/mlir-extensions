@@ -19,6 +19,7 @@
 // #include <imex/Transforms/IMEXPasses.h>
 #include "imex/Transforms/Passes.h"
 #include <imex/Dialect/PTensor/Transforms/Passes.h>
+#include <imex/Dialect/TPP/Passes.h>
 #include <imex/Dialect/gml_st/transforms/passes.h>
 
 #include <cstdlib>
@@ -42,6 +43,7 @@ inline void registerAllPasses() {
   // Dialect passes
   registerPTensorPasses();
   ::mlir::gml_st::registerGmlStPasses();
+  registerTppCompilerPasses();
 
   // Dialect pipelines
 }

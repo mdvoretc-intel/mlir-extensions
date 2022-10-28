@@ -21,6 +21,11 @@
 #include <imex/Dialect/Dist/IR/DistOps.h>
 #include <imex/Dialect/GPUX/IR/GPUXOps.h>
 #include <imex/Dialect/PTensor/IR/PTensorOps.h>
+#include <imex/Dialect/TPP/Dialect/LinalgX/LinalgXDialect.h>
+#include <imex/Dialect/TPP/Dialect/Mathx/MathxDialect.h>
+#include <imex/Dialect/TPP/Dialect/Stdx/StdxDialect.h>
+#include <imex/Dialect/TPP/Dialect/Tpp/TppDialect.h>
+#include <imex/Dialect/TPP/Dialect/Xsmm/XsmmDialect.h>
 #include <imex/Dialect/gml_st/IR/gml_st_ops.h>
 
 namespace imex {
@@ -31,7 +36,12 @@ inline void registerAllDialects(::mlir::DialectRegistry &registry) {
     registry.insert<::imex::ptensor::PTensorDialect,
                     ::imex::dist::DistDialect,
                     ::imex::gpux::GPUXDialect,
-                    ::mlir::gml_st::GmlStDialect>();
+                    ::mlir::gml_st::GmlStDialect,
+                    ::mlir::linalgx::LinalgXDialect,
+                    ::mlir::mathx::MathxDialect,
+                    ::mlir::stdx::StdxDialect,
+                    ::mlir::tpp::TppDialect,
+                    ::mlir::xsmm::XsmmDialect>();
   // clang-format on
 }
 

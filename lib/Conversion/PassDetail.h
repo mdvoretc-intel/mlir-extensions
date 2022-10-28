@@ -83,6 +83,26 @@ namespace gml_st {
 class GmlSt_Dialect;
 } // namespace gml_st
 
+namespace linalgx {
+class LinalgXDialect;
+} // namespace linalgx
+
+namespace mathx {
+class MathxDialect;
+} // namespace mathx
+
+namespace stdx {
+class StdxDialect;
+} // namespace stdx
+
+namespace tpp {
+class TppDialect;
+} // namespace tpp
+
+namespace xsmm {
+class XsmmDialect;
+} // namespace xsmm
+
 #define GEN_PASS_CLASSES
 #include <imex/Conversion/Passes.h.inc>
 
