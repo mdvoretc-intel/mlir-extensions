@@ -1,37 +1,54 @@
 add_subdirectory(Dialect)
 
-    add_mlir_conversion_library(
-        MLIRTPP
-#Passes
-            LinalgMapToTpp.cpp PadSIMDDimMatmul.cpp TppCompiler
-                .cpp VectorizeCopy.cpp PreBufferization.cpp MainClosure
-                .cpp UndoMainClosure.cpp Bufferization
-                .cpp TileConsumerAndFuseProducers
-                .cpp DecomposeConvsToMatmulOrBrgemm.cpp ToBlockLayoutAndBack
-                .cpp MapToBatchReduceGEMM.cpp TransformDialectInterpreter
-                .cpp IteratorCollapsing.cpp MapConvToMatmul.cpp LinalgXToLoops
-                .cpp
+add_mlir_conversion_library(MLIRTPP
+  # Passes
+    LinalgMapToTpp.cpp
+    PadSIMDDimMatmul.cpp
+    TppCompiler.cpp
+    VectorizeCopy.cpp
+    PreBufferization.cpp
+    MainClosure.cpp
+    UndoMainClosure.cpp
+    Bufferization.cpp
+    TileConsumerAndFuseProducers.cpp
+    DecomposeConvsToMatmulOrBrgemm.cpp
+    ToBlockLayoutAndBack.cpp
+    MapToBatchReduceGEMM.cpp
+    TransformDialectInterpreter.cpp
+    IteratorCollapsing.cpp
+    MapConvToMatmul.cpp
+    LinalgXToLoops.cpp
 
-#Utils
-                    TransformUtils
-                .cpp
+  # Utils
+    TransformUtils.cpp
 
-#Conversions
-                    ConvertTppToVector.cpp ConvertLinalgToTpp
-                .cpp ConvertTppToLoops.cpp ConvertTppToXsmm
-                .cpp ConvertXsmmToFunc.cpp
+  # Conversions
+    ConvertTppToVector.cpp
+    ConvertLinalgToTpp.cpp
+    ConvertTppToLoops.cpp
+    ConvertTppToXsmm.cpp
+    ConvertXsmmToFunc.cpp
 
-                    ADDITIONAL_HEADER_DIRS ${PROJECT_SOURCE_DIR} /
-        include / imex / Dialect /
-        TPP
+  ADDITIONAL_HEADER_DIRS
+    ${PROJECT_SOURCE_DIR}/include/imex/Dialect/TPP
 
-            DEPENDS TPPCompilerPassIncGen TPPLinalgXTransformOps
+  DEPENDS
+    TPPCompilerPassIncGen
+    TPPLinalgXTransformOps
 
-                LINK_LIBS PUBLIC TPPLinalgXDialect TPPMathxDialect
-                    TPPStdxDialect TPPTppDialect TPPXsmmDialect
+	LINK_LIBS PUBLIC
+    TPPLinalgXDialect
+    TPPMathxDialect
+    TPPStdxDialect
+    TPPTppDialect
+    TPPXsmmDialect
 
-                        MLIRIR MLIRInferTypeOpInterface)
+    MLIRIR
+    MLIRInferTypeOpInterface
+)
 
-        target_include_directories(
-            MLIRTPP PUBLIC $<BUILD_INTERFACE : ${TPP_GEN_INCLUDE_DIR}>
-                $<BUILD_INTERFACE : ${TPP_MAIN_INCLUDE_DIR}>)
+target_include_directories(MLIRTPP
+  PUBLIC
+    $<BUILD_INTERFACE:${TPP_GEN_INCLUDE_DIR}>
+    $<BUILD_INTERFACE:${TPP_MAIN_INCLUDE_DIR}>
+)

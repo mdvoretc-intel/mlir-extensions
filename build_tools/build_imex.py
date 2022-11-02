@@ -73,7 +73,7 @@ def _configure_llvm_build(
     llvm_src_dir,
     cmake_exec,
     mlir_install_prefix,
-    build_type="Release",
+    build_type="Debug",
     enable_assertions=True,
     c_compiler=None,
     cxx_compiler=None,
@@ -133,7 +133,7 @@ def _configure_llvm_build(
 def _build_llvm(
     llvm_src_dir,
     mlir_install_dir=None,
-    build_type="Release",
+    build_type="Debug",
     enable_assertions=True,
     c_compiler=None,
     cxx_compiler=None,
@@ -309,7 +309,7 @@ def _build_imex(
     imex_source_dir,
     llvm_install_dir,
     imex_install_prefix=None,
-    build_type="Release",
+    build_type="Debug",
     c_compiler=None,
     cxx_compiler=None,
     cmake_executable=None,
@@ -422,7 +422,7 @@ if __name__ == "__main__":
     )
     llvm_builder.add_argument(
         "--build-type",
-        default="Release",
+        default="Debug",
         type=str,
         dest="build_type",
         help="Set the build mode for LLVM and imex",
