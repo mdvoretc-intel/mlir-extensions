@@ -156,3 +156,8 @@ def TransformMatmulForCpuPass
                "Tile sizes for a `linalg.matmul`">,
   ];
 }
+
+def OneShotBufferize : Pass<"gmlst-one-shot-bufferize", "mlir::ModuleOp"> {
+  let summary = "One shot bufferization pass.";
+  let constructor = "gml_st::createOneShotBufferizePass()";
+}

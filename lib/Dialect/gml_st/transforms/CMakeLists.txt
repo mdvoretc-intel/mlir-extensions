@@ -62,6 +62,7 @@ add_mlir_dialect_library(GmlStBufferizableOpInterface
 )
 
 add_mlir_dialect_library(GmlStPasses
+  bufferize.cc
   bufferize_tiled_loop.cc
   collapse_materialize_ops.cc
   fusion.cc

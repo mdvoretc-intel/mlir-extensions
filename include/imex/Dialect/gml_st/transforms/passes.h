@@ -26,6 +26,9 @@ limitations under the License.
 #include "imex/Dialect/gml_st/transforms/passes.h.inc"
 
 namespace mlir {
+
+class ModuleOp;
+
 namespace gml_st {
 
 /// Pass to tile ops using TilingInterface.
@@ -77,6 +80,9 @@ std::unique_ptr<OperationPass<func::FuncOp>> createTransformScatterForCpuPass();
 /// Pass to transform a linalg.matmul op for CPU backend.
 std::unique_ptr<OperationPass<func::FuncOp>>
 createTransformMatmulForCpuPass(ArrayRef<int64_t> tileSizes = llvm::None);
+
+/// Pass to bufferize code with GML_St
+std::unique_ptr<OperationPass<mlir::ModuleOp>> createOneShotBufferizePass();
 
 #define GEN_PASS_REGISTRATION
 #include "imex/Dialect/gml_st/transforms/passes.h.inc"

@@ -189,7 +189,7 @@ ParallelOpToGpu2dPattern::matchAndRewrite(ParallelOp root,
           parallel, bvm, inductionVarIdx, dimIdx, launch, rewriter));
 
       bvm.map(parallel.getInductionVars()[dimIdx],
-              nestingLevelToInductionVarMap[inductionVarIdx + dimIdx]);
+              nestingLevelToInductionVarMap[2 * nestingLevel + dimIdx]);
     }
     loopIterators.push_back(parallel.getBody()->without_terminator());
     return success();
