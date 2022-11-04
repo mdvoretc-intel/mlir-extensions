@@ -22,7 +22,7 @@ namespace {
 
 bool hasUniqueInputAndOutputMaps(linalg::GenericOp genericOp,
                                  AffineMap &inputMap, AffineMap &outputMap) {
-  if (genericOp.getNumInputs() != 1 || genericOp.getNumOutputs() != 1) {
+  if (genericOp.getNumDpsInputs() != 1 || genericOp.getNumDpsInits() != 1) {
     return false;
   }
   inputMap = genericOp.getIndexingMapsArray().front();
@@ -101,9 +101,9 @@ bool isCwiseGenericOp(Operation *op, int64_t &arity) {
     return false;
 
   // Check n-arity.
-  if (genericOp.getNumOutputs() != 1)
+  if (genericOp.getNumDpsInits() != 1)
     return false;
-  arity = genericOp.getNumInputs();
+  arity = genericOp.getNumDpsInputs();
 
   // Check all-parallel iterator types.
   if (!llvm::all_of(genericOp.getIteratorTypes(), [](Attribute it) {

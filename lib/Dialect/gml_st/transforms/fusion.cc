@@ -86,7 +86,7 @@ struct DimOpReificationPattern : public OpRewritePattern<tensor::DimOp> {
       if (genericOp.getNumResults() != 1 || !genericOp.hasTensorSemantics()) {
         return failure();
       }
-      Value outputOperand = genericOp.getOutputOperand(0)->get();
+      Value outputOperand = genericOp.getDpsInitOperand(0)->get();
       rewriter.replaceOpWithNewOp<tensor::DimOp>(op, outputOperand,
                                                  op.getIndex());
       return success();
